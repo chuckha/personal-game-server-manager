@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 
-sudo apt update && sudo apt upgrade -y 
+sudo apt update && sudo apt upgrade -y
 sudo apt install unzip apt-transport-https ca-certificates curl gnupg lsb-release -y
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg -y
 sudo apt update
@@ -55,5 +55,25 @@ services:
       - ./valheim/saves:/home/steam/.config/unity3d/IronGate/Valheim
       - ./valheim/server:/home/steam/valheim
       - ./valheim/backups:/home/steam/backups" >> docker-compose.yml'
-echo "@reboot root (cd /usr/games/serverconfig/ && docker-compose up)" > /etc/cron.d/awsgameserver
-sudo docker-compose up
+
+sudo bash -c 'echo "[Unit]
+Description=AWS Game Server Service
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/usr/games/serverconfig/
+ExecStart=/bin/bash -c "/usr/local/bin/docker-compose up --detach"
+ExecStop=/bin/bash -c "/usr/local/bin/docker-compose down"
+RemainAfterExit=yes
+User=$USER
+Group=docker
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target" >> /etc/systemd/system/awsgameserver.service'
+sudo chmod 644 /etc/systemd/system/awsgameserver.service
+sudo systemctl daemon-reload
+sudo systemctl enable awsgameserver.service
+sudo systemctl start awsgameserver.service
